@@ -6,21 +6,25 @@ const jwt = require("jsonwebtoken");  // JWT import for token generation
 // User Registration
 const userRegister = async (req, res) => {
   try {
-    const { username, email, password, mobile } = req.body;
+      const { username, email, password, mobile } = req.body;
 
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
+      // Check if user already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+          return res.status(400).json({ message: "User already exists" });
+      }
 
-    const addUser = await User.create({
-      username,
-      email,
-      password: hashedPassword,  // Store hashed password
-      mobile,
-    });
+      const addUser = await User.create({
+          username,
+          email,
+          password, // Directly pass the raw password; it will be hashed by the schema
+          mobile,
+      });
 
-    res.status(200).json({ message: "success", addUser });
+      res.status(201).json({ message: "User registered successfully", addUser });
   } catch (error) {
-    res.status(500).json({ message: "failed", error });
+      console.error("Error during registration:", error);
+      res.status(500).json({ message: "Internal server error", error });
   }
 };
 
@@ -76,44 +80,34 @@ const userDelete = async (req, res) => {
 
 // User Login
 const userLogin = async (req, res) => {
-    try {
-      const { email, password } = req.body;
-  
-      // Log the incoming email and password for debugging
-      console.log("Login request:", { email, password });
-  
-      // Find user by email
-      const user = await User.findOne({ email });
-      if (!user) {
-        console.log("User not found with this email:", email);
-        return res.status(400).json({ message: "Invalid email or password" });
-      }
-  
-      // Log the hashed password from the database
-      console.log("Hashed password from DB:", user.password);
-  
-      // Compare entered password with stored hash
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      
-      if (!isPasswordValid) {
-        console.log("Password mismatch for user:", email);
-        return res.status(400).json({ message: "Invalid email or password" });
-      }
-  
-      // Log successful password match
-      console.log("Password matched successfully!");
-  
-      // Generate JWT token on successful login
-      const token = jwt.sign({ userId: user._id }, "your-secret-key", { expiresIn: "1h" });
-  
-      res.status(200).json({
-        message: "Login successful",
-        token, // Return token to the client
-      });
-    } catch (error) {
-      console.log("Error during login:", error);
-      res.status(500).json({ message: "Internal server error", error });
+  try {
+    const { email, password } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email or password" });
     }
-  };
+
+    // Compare entered password with stored hash
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // Generate JWT token on successful login
+    const token = jwt.sign({ userId: user._id }, "your-secret-key", { expiresIn: "1h" });
+
+    res.status(200).json({
+      message: "Login successful",
+      token, // Return token to the client
+      data:user
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).json({ message: "Internal server error", error });
+  }
+};
+
 
 module.exports = { userRegister, userList, userDelete, userUpdate, userLogin };
