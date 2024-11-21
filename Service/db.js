@@ -1,6 +1,6 @@
 const mongoose = require("mongoose")
 const connectdb = () => {
-    mongoose.connect("mongodb://127.0.0.1/zeeshan", {
+    mongoose.connect("mongodb://127.0.0.1/asignmentproject", {
           
     }).then(() => {
         console.log("db connected")
